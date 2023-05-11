@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using Core.Models;
 using Microsoft.EntityFrameworkCore;
+using UserGroupCode = DataAccess.Entities.UserGroupCode;
+using UserStateCode = DataAccess.Entities.UserStateCode;
 
 namespace DataAccess;
 
@@ -16,108 +18,55 @@ public class UserRepository : Core.IUserRepository
         {
             cfg.CreateMap<User, DataAccess.Entities.User>();
             cfg.CreateMap<DataAccess.Entities.User, User>();
+            cfg.CreateMap<UserGroup, DataAccess.Entities.UserGroup>();
+            cfg.CreateMap<DataAccess.Entities.UserGroup, UserGroup>();
+            cfg.CreateMap<UserState, DataAccess.Entities.UserState>();
+            cfg.CreateMap<DataAccess.Entities.UserState, UserState>();
         });
         _mapper = new Mapper(config);
     }
     
-    public User GetUserByName(string username)
+    public User GetUserByLogin(string login)
     {
-        return _mapper.Map<DataAccess.Entities.User, User>(_dbContext.Users.FirstOrDefault());
+        return _mapper.Map<DataAccess.Entities.User, User>(_dbContext.Users.FirstOrDefault(u => u.Login == login));
     }
 
     public List<User> GetAllUsers()
     {
-        return _dbContext.Users.Select(_mapper.Map<DataAccess.Entities.User, User>).ToList();
+        return _dbContext.Users.Include(c => c.UserGroup).Include(c => c.UserState)
+            .Select(_mapper.Map<DataAccess.Entities.User, User>).ToList();
     }
 
     public List<User> GetAllUsers(int skip, int take)
     {
-        return _dbContext.Users.Skip(skip).Take(take).AsEnumerable()
+        return _dbContext.Users.Include(c => c.UserGroup).Include(c => c.UserState).Skip(skip).Take(take).AsEnumerable()
             .Select(_mapper.Map<DataAccess.Entities.User, User>).ToList();
     }
 
-    public void AddNewUser(User user)
+    public void CreateOrUpdateUser(User user)
     {
+        var userEntity = _dbContext.Users.FirstOrDefault(u => u.Login == user.Login);
+        if (userEntity is not null)
+            _dbContext.Users.Remove(userEntity);
         _dbContext.Users.Add(_mapper.Map<User, DataAccess.Entities.User>(user));
         _dbContext.SaveChanges();
     }
 
-    public void DeleteUser(User user)
+    public void UnregisterUserByLogin(string login)
     {
-        _dbContext.Users.Remove(_mapper.Map<User, DataAccess.Entities.User>(user));
+        var user = _dbContext.Users.First(u => u.Login == login);
+        user.UserState.Code = UserStateCode.Blocked;
         _dbContext.SaveChanges();
     }
+
+    public bool DoesUserExists(string login)
+    {
+        return _dbContext.Users.Any(u => u.Login == login && u.UserState.Code == UserStateCode.Active);
+    }
+    
+    public bool DoesAdminExists()
+    {
+        return _dbContext.Users.Any(u =>
+            u.UserGroup.Code == UserGroupCode.Admin && u.UserState.Code == UserStateCode.Active);
+    }
 }
-
-/*public class Mapper
-{
-    public User Map(DataAccess.Entities.User user)
-    {
-        if (user is null)
-            return null;
-        return new User
-        {
-            Login = user.Login,
-            Password = user.Password,
-            CreatedDate = user.CreatedDate,
-            UserGroup = Map(user.UserGroup),
-            UserState = Map(user.UserState)
-        };
-    }
-    
-    public UserGroup Map(DataAccess.Entities.UserGroup userGroup)
-    {
-        return new UserGroup
-        {
-            Code = Map(userGroup.Code),
-            Description = userGroup.Description
-        };
-    }
-    
-    public UserState Map(DataAccess.Entities.UserState userState)
-    {
-        return new UserState
-        {
-            Code = Map(userState.Code),
-            Description = userState.Description
-        };
-    }
-
-    public UserGroupCode Map(DataAccess.Entities.UserGroupCode userGroupCode) => (UserGroupCode)userGroupCode;
-    public UserStateCode Map(DataAccess.Entities.UserStateCode userStateCode) => (UserStateCode)userStateCode;
-    
-    public DataAccess.Entities.User Map(User user)
-    {
-        if (user is null)
-            return null;
-        return new DataAccess.Entities.User
-        {
-            Login = user.Login,
-            Password = user.Password,
-            CreatedDate = user.CreatedDate,
-            UserGroup = Map(user.UserGroup),
-            UserState = Map(user.UserState)
-        };
-    }
-    
-    public DataAccess.Entities.UserGroup Map(UserGroup userGroup)
-    {
-        return new DataAccess.Entities.UserGroup
-        {
-            Code = Map(userGroup.Code),
-            Description = userGroup.Description
-        };
-    }
-    
-    public DataAccess.Entities.UserState Map(UserState userState)
-    {
-        return new DataAccess.Entities.UserState
-        {
-            Code = Map(userState.Code),
-            Description = userState.Description
-        };
-    }
-
-    public UserGroupCode Map(DataAccess.Entities.UserGroupCode userGroupCode) => (UserGroupCode)userGroupCode;
-    public UserStateCode Map(DataAccess.Entities.UserStateCode userStateCode) => (UserStateCode)userStateCode;
-}*/

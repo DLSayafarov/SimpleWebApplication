@@ -2,9 +2,11 @@
 
 public interface IUserRepository
 {
-    public Models.User GetUserByName(string username);
+    public Models.User GetUserByLogin(string login);
     public List<Models.User> GetAllUsers();
     public List<Models.User> GetAllUsers(int skip, int take);
-    public void AddNewUser(Models.User user);
-    public void DeleteUser(Models.User username);
+    public void CreateOrUpdateUser(Models.User user);
+    public void UnregisterUserByLogin(string login);
+    public bool DoesUserExists(string login);
+    public bool DoesAdminExists();
 }
