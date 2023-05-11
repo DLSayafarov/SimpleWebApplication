@@ -30,39 +30,59 @@ public class UsersController : ControllerBase
 
     [HttpGet]
     [Route("GetAllUsers")]
-    public IActionResult GetAllUsers()
+    public async Task<IActionResult> GetAllUsers()
     {
         var serviceResponse = _userProviderService.GetAllUsers();
         if (serviceResponse.IsSuccessful)
-            return Ok(serviceResponse.Result.Select(u => _mapper.Map<Core.Models.User, User>(u)));
-
+        {
+            _logger.Log(LogLevel.Information, "Successful GetAllUsers request processing");
+            return Ok(serviceResponse.Result.Select(u => _mapper.Map<Core.Models.User, User>(u)));    
+        }
+        
+        _logger.Log(LogLevel.Warning, "GetAllUsers request processing failed");
         return BadRequest(serviceResponse.Description);
     }
     
     [HttpGet]
     [Route("GetUser")]
-    public IActionResult GetUser(string userLogin)
+    public async Task<IActionResult> GetUser(string userLogin)
     {
         var serviceResponse = _userProviderService.GetUserByLogin(userLogin);
         if (serviceResponse.IsSuccessful)
+        {
+            _logger.Log(LogLevel.Information, "Successful GetUser request processing");
             return Ok(_mapper.Map<Core.Models.User, User>(serviceResponse.Result));
-
+        }
+        
+        _logger.Log(LogLevel.Information, $"User {userLogin} not found");
         return BadRequest(serviceResponse.Description);
     }
     
     [HttpPost]
     [Route("RegisterNewUser")]
-    public IActionResult RegisterNewUser(User user)
+    public async Task<IActionResult> RegisterNewUser(User user)
     {
         var serviceResponse = _userProviderService.RegisterNewUser(_mapper.Map<User, Core.Models.User>(user));
-        return serviceResponse.IsSuccessful ? Ok() : BadRequest(serviceResponse.Description);
+        if (serviceResponse.IsSuccessful)
+        {
+            _logger.Log(LogLevel.Information, $"User {user.Login} registered");
+            return Ok();
+        }
+        _logger.Log(LogLevel.Information, $"User {user.Login} failed to register");
+        return BadRequest(serviceResponse.Description);
     }
     
     [HttpPost]
     [Route("DeleteUser")]
-    public IActionResult DeleteUser(string userLogin)
+    public async Task<IActionResult> DeleteUser(string userLogin)
     {
         var serviceResponse = _userProviderService.UnregisterUserByLogin(userLogin);
-        return serviceResponse.IsSuccessful ? Ok() : BadRequest(serviceResponse.Description);
+        if (serviceResponse.IsSuccessful)
+        {
+            _logger.Log(LogLevel.Information, $"User {userLogin} unregistered");
+            return Ok();
+        }
+        _logger.Log(LogLevel.Information, $"User {userLogin} failed to unregister");
+        return BadRequest(serviceResponse.Description);
     }
 }
