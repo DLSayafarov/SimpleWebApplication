@@ -44,7 +44,7 @@ public class UserProviderService : IUserProviderService
         if (user.UserGroup.Code == UserGroupCode.Admin && _userRepository.DoesAdminExists())
             return new ServiceRequestResult(false, "Admin already exists");
 
-        Task.Run(() => StartUserRegistration())
+        Task.Run(() => StartUserRegistration(user))
             .ContinueWith(_ => FinishRegistration(user));
 
         return new ServiceRequestResult(true);
@@ -62,8 +62,9 @@ public class UserProviderService : IUserProviderService
         return new ServiceRequestResult(true);
     }
 
-    async private Task StartUserRegistration(params object[] args)
+    async private Task StartUserRegistration(User user)
     {
+        _userLoginsInRegistrationProcess[user.Login] = true;
         /* do something useful or not so */
         Thread.Sleep(5000);
     }
